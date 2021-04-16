@@ -8,7 +8,7 @@ ALGORITHM = 'HS256'
 access_token_jwt_subject = 'access'
 
 
-def create_access_token(*args, data: dict, expires_delta: timedelta = None):
+def create_access_token(data: dict, expires_delta: timedelta = None):
     """ Create access token """
 
     to_encode = data.copy()

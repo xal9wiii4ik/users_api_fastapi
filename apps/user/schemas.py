@@ -7,6 +7,7 @@ class UserBase(BaseModel):
     """ Base schema for model User """
 
     email: str
+    username: str
     is_active: Optional[bool] = False
     is_superuser: Optional[bool] = False
 

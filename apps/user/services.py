@@ -15,5 +15,4 @@ async def user_create(item: UserCreate) -> dict:
     query = users.insert().values(**item_dict)
     pk = await database.execute(query=query)
     item_dict.update({'id': pk})
-    print(item_dict)
     return item_dict

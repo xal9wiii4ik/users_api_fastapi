@@ -1,5 +1,5 @@
 import os
-import py_env
+from core import py_env
 
 SECRET_KEY = py_env.SECRET_KEY
 
