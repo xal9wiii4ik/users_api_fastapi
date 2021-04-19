@@ -1,8 +1,9 @@
-from datetime import timedelta, datetime
-
 import jwt
 
-from fastapi import Request
+from fastapi import Request, HTTPException
+
+from datetime import timedelta, datetime
+
 from db.db import database
 from apps.user.models import users
 from core.config import (
@@ -32,14 +33,17 @@ async def authenticate(request: Request) -> dict or None:
     """ Authenticate user """
 
     token = request.headers.get("Authorization").split(' ')
-    if (token != '') and (token is not None) and (token[0] == TOKEN_TYPE):
-        payload = jwt.decode(token[1], SECRET_KEY, algorithms=[ALGORITHM])
-        user_id: int = payload.get('user_id')
-        query = users.select().where(users.c.id == user_id)
-        user = await database.fetch_one(query=query)
-        if user is not None:
-            return dict(user)
-    return None
+    if (token[0] != '') and (token is not None) and (token[0] == TOKEN_TYPE):
+        try:
+            payload = jwt.decode(token[1], SECRET_KEY, algorithms=[ALGORITHM])
+            user_id: int = payload.get('user_id')
+            query = users.select().where(users.c.id == user_id)
+            user = await database.fetch_one(query=query)
+            if user is not None:
+                return dict(user)
+        except Exception as e:
+            print(e)
+    raise HTTPException(status_code=401, detail='Given credentials are not provide')
 
 
 def create_access_token(data: dict):
