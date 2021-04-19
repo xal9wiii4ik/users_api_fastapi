@@ -1,4 +1,3 @@
-import os
 from core import py_env
 
 SECRET_KEY = py_env.SECRET_KEY
@@ -10,6 +9,8 @@ SQLALCHEMY_DATABASE_URL = (
     f"postgresql://{py_env.POSTGRES_USER}:{py_env.POSTGRES_PASSWORD}@{py_env.POSTGRES_SERVER}/{py_env.POSTGRES_DB}"
 )
 
-USERS_OPEN_REGISTRATION = True
+TOKEN_TYPE = py_env.TOKEN_TYPE
+ALGORITHM = py_env.ALGORITHM
+ACCESS_TOKEN_JWT_SUBJECT = py_env.ACCESS_TOKEN_JWT_SUBJECT
 
 # ''.join(secrets.choice('abcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*(-_=+)') for i in range(50))

@@ -1,11 +1,7 @@
-from datetime import timedelta
+from fastapi import APIRouter, HTTPException
 
-from fastapi import APIRouter, Depends, HTTPException
-
-from core.config import ACCESS_TOKEN_EXPIRE_MINUTES
-from core.jwt import create_access_token
-from apps.token.schemas import TokenData, Token, LoginForm
-from apps.token.services import authenticate_user
+from apps.token.schemas import Token, LoginForm
+from apps.token.services import authenticate_user, create_access_token
 
 router = APIRouter()
 
@@ -18,6 +14,5 @@ async def get_access_token(item: LoginForm):
     if user is None:
         raise HTTPException(status_code=404, detail='User does not exist')
     else:
-        access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
-        access_token = create_access_token(data={'user_id': user['id']}, expires_delta=access_token_expires)
-        return {'access_token': access_token, 'token_type': 'Bearer'}
+        data = create_access_token(data={'user_id': user['id']})
+        return data
