@@ -3,12 +3,19 @@ import smtplib
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 
+from fastapi import HTTPException
+
 from core.security import get_hashed_password
 from db.db import database
 from apps.user.models import users
-from apps.user.schemas import UserCreate, UserBaseInDb
+from apps.user.schemas import UserCreate, UserInDb
 
-from core.config import EMAIL_HOST, EMAIL_HOST_PASSWORD, EMAIL_PORT, EMAIL_USERNAME
+from core.config import (
+    EMAIL_HOST,
+    EMAIL_HOST_PASSWORD,
+    EMAIL_PORT,
+    EMAIL_USERNAME,
+)
 
 
 async def user_create(item: UserCreate) -> dict:
@@ -20,8 +27,11 @@ async def user_create(item: UserCreate) -> dict:
     if password == repeat_password:
         item_dict.update({'hashed_password': get_hashed_password(password=password)})
     query = users.insert().values(**item_dict)
-    pk = await database.execute(query=query)
-    item_dict.update({'id': pk})
+    try:
+        pk = await database.execute(query=query)
+        item_dict.update({'id': pk})
+    except Exception as e:
+        raise HTTPException(status_code=404, detail=e.detail)
 
     server = smtplib.SMTP(host=EMAIL_HOST, port=EMAIL_PORT)
     server.starttls()
@@ -49,10 +59,17 @@ async def user_verification(pk: int) -> None:
     return await database.execute(query=query)
 
 
-async def user_update(pk: int, item: UserBaseInDb) -> dict:
+async def user_update(pk: int, item: UserInDb) -> dict:
     """ Update user profile"""
 
-    query = users.update().where(users.c.id == pk).values(**item.dict())
+    item_dict = item.dict()
+    item_dict['id'] = pk
+    if item_dict['password'] is not None:
+        item_dict.update({'hashed_password': get_hashed_password(password=item_dict['password'])})
+    item_dict.pop('password')
+    if item_dict['email'] is None:
+        item_dict.pop('email')
+    query = users.update().where(users.c.id == pk).values(**item_dict)
     return await database.execute(query=query)
 
 

@@ -22,8 +22,8 @@ async def get_user_me(pk: int, user: dict = Depends(get_current_active_user)):
         return user
 
 
-@router.put(path='/user/{pk}', response_model=UserInDb, status_code=200)
-async def update_user(pk: int, item: UserBaseInDb, user: dict = Depends(get_current_active_user)):
+@router.put(path='/user/{pk}', response_model=UserBaseInDb, status_code=200)
+async def update_user(pk: int, item: UserInDb, user: dict = Depends(get_current_active_user)):
     """ Update my profile """
 
     if user is not None:
