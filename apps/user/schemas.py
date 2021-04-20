@@ -23,6 +23,9 @@ class UserInDb(UserBase):
     """ Schema for user in db """
 
     id: Optional[int] = None
+    password: Optional[str] = None
+    email: Optional[str] = None
+    is_active: Optional[bool] = True
 
 
 class UserCreate(UserBaseInDb):
