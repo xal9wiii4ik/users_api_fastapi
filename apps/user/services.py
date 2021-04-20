@@ -1,7 +1,14 @@
+import smtplib
+
+from email.mime.multipart import MIMEMultipart
+from email.mime.text import MIMEText
+
 from core.security import get_hashed_password
 from db.db import database
 from apps.user.models import users
 from apps.user.schemas import UserCreate, UserBaseInDb
+
+from core.config import EMAIL_HOST, EMAIL_HOST_PASSWORD, EMAIL_PORT, EMAIL_USERNAME
 
 
 async def user_create(item: UserCreate) -> dict:
@@ -15,7 +22,31 @@ async def user_create(item: UserCreate) -> dict:
     query = users.insert().values(**item_dict)
     pk = await database.execute(query=query)
     item_dict.update({'id': pk})
+
+    server = smtplib.SMTP(host=EMAIL_HOST, port=EMAIL_PORT)
+    server.starttls()
+    server.login(user=EMAIL_USERNAME, password=EMAIL_HOST_PASSWORD)
+    message = MIMEMultipart('alternative')
+    text = "Hi!"
+    html = f"""\
+    <h1 style="color:red;">This is your verification link:<h1>
+    <h3>http://127.0.0.1:8000/verification/{pk}/<h3>
+    """
+    part1 = MIMEText(text, 'plain')
+    part2 = MIMEText(html, 'html')
+    message['Subject'] = 'Verification user'
+    message.attach(part1)
+    message.attach(part2)
+    server.sendmail(from_addr=EMAIL_USERNAME, to_addrs=item_dict.get('email'), msg=message.as_string())
+    server.quit()
     return item_dict
+
+
+async def user_verification(pk: int) -> None:
+    """ Set is_active to true """
+
+    query = users.update().where(users.c.id == pk).values(**{'is_active': True})
+    return await database.execute(query=query)
 
 
 async def user_update(pk: int, item: UserBaseInDb) -> dict:
