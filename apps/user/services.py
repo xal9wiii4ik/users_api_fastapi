@@ -18,14 +18,26 @@ from core.config import (
 )
 
 
+async def create_super_user(item: dict) -> bool:
+    """ Check if user already exist and creating superuser """
+
+    item = await _validate_password(item=item)
+    query = users.select().where(users.c.email == item.get('email'))
+    user = await database.fetch_one(query=query)
+    if user is None:
+        query = users.select().where(users.c.username == item.get('username'))
+        user = await database.fetch_one(query=query)
+        if user is None:
+            item['is_active'], item['is_superuser'] = True, True
+            query = users.insert().values(**item)
+            await database.execute(query=query)
+    return True
+
+
 async def user_create(item: UserCreate) -> dict:
     """ Creating user """
 
-    item_dict = item.dict()
-    password = item_dict.pop('password')
-    repeat_password = item_dict.pop('repeat_password')
-    if password == repeat_password:
-        item_dict.update({'hashed_password': get_hashed_password(password=password)})
+    item_dict = await _validate_password(item=item.dict())
     query = users.insert().values(**item_dict)
     try:
         pk = await database.execute(query=query)
@@ -89,3 +101,14 @@ async def get_user(pk: int) -> dict or None:
         return dict(user)
     else:
         return None
+
+
+async def _validate_password(item: dict) -> dict:
+    """ Validate password and return dict with hashed password """
+
+    password = item.pop('password')
+    repeat_password = item.pop('repeat_password')
+    if password == repeat_password:
+        item.update({'hashed_password': get_hashed_password(password=password)})
+        return item
+    raise HTTPException(status_code=404, detail='The password and the repeat password didnt match')
