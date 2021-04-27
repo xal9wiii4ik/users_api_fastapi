@@ -7,8 +7,8 @@ from fastapi import HTTPException
 
 from core.security import get_hashed_password
 from db.db import database
-from apps.user.models import users
-from apps.user.schemas import UserCreate, UserInDb
+from apps.user.models import users, social_auth_accounts
+from apps.user.schemas import UserCreate, UserInDb, SocialAuthCreate
 
 from core.config import (
     EMAIL_HOST,
@@ -16,6 +16,26 @@ from core.config import (
     EMAIL_PORT,
     EMAIL_USERNAME,
 )
+
+
+async def create_social_auth_account(item: SocialAuthCreate) -> dict:
+    """ Creating social auth account with out relation with user"""
+
+    item_dict = item.dict()
+    query = social_auth_accounts.insert().values(**item_dict)
+    pk = await database.execute(query=query)
+    item_dict.update({'id': pk})
+    return item_dict
+
+
+async def check_exist_social_auth_account(username: str, account_id: int):
+    """ Check if social auth account exist in db"""
+
+    query = social_auth_accounts.select().where(social_auth_accounts.c.username == username).where(
+        social_auth_accounts.c.account_id == account_id)
+    account = await database.fetch_one(query=query)
+    if account:
+        raise HTTPException(status_code=404, detail='user already exist')
 
 
 async def create_super_user(item: dict) -> bool:
