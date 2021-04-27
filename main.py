@@ -1,9 +1,14 @@
 from fastapi import FastAPI
 
+from starlette.middleware.sessions import SessionMiddleware
+
+from core.config import SECRET_KEY
 from db.db import database
 from routers import routers
 
 app = FastAPI()
+
+app.add_middleware(SessionMiddleware, secret_key=SECRET_KEY)
 
 
 @app.on_event('startup')
