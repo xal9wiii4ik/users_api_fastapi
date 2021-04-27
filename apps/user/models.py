@@ -1,4 +1,5 @@
-from sqlalchemy import Column, Integer, String, Boolean
+from sqlalchemy import Column, Integer, String, Boolean, ForeignKey
+from sqlalchemy.orm import relationship
 
 from db.base_model_class import Base
 
@@ -15,3 +16,18 @@ class User(Base):
 
 
 users = User.__table__
+
+
+class SocialAuth(Base):
+    """ Model for social auth """
+
+    id = Column(Integer, primary_key=True)
+    account_id = Column(Integer)
+    username = Column(String)
+    email = Column(String, nullable=True)
+    provider = Column(String)
+    user = Column(Integer, ForeignKey('user.id'), nullable=True)
+    user_id = relationship(User)
+
+
+social_auth_accounts = SocialAuth.__table__
