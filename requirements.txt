@@ -8,6 +8,8 @@ async-exit-stack==1.0.1
 async-generator==1.10
 async-timeout==3.0.1
 asyncpg==0.22.0
+atlastk==0.12.9
+Authlib==0.15.3
 backcall==0.2.0
 bcrypt==3.2.0
 blinker==1.4
