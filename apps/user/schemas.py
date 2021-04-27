@@ -33,3 +33,18 @@ class UserCreate(UserBaseInDb):
 
     password: str
     repeat_password: str
+
+
+class SocialAuthCreate(BaseModel):
+    """ Schema for creating social account"""
+
+    account_id: int
+    username: str
+    email: Optional[str] = None
+    provider: str
+
+
+class SocialAuthShow(SocialAuthCreate):
+    """ Schema for display social account"""
+
+    id: int
