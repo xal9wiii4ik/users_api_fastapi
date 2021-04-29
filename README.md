@@ -5,6 +5,7 @@
 2) custom jwt authentication
 3) verification user using smtp
 4) terminal commands
+5) Git authorization
 
 #### for create superuser:
 python scripts/createsuperuser
