@@ -2,13 +2,14 @@ import smtplib
 
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
+from typing import Optional
 
 from fastapi import HTTPException
 
 from core.security import get_hashed_password
 from db.db import database
-from apps.user.models import users, social_auth_accounts
-from apps.user.schemas import UserCreate, UserInDb, SocialAuthCreate
+from apps.user.models import users, social_accounts
+from apps.user.schemas import UserCreate, UserInDb, SocialAccountCreate
 
 from core.config import (
     EMAIL_HOST,
@@ -18,24 +19,65 @@ from core.config import (
 )
 
 
-async def create_social_auth_account(item: SocialAuthCreate) -> dict:
+async def get_user_from_email(email: str) -> dict or None:
+    """ Getting user using email """
+
+    query = users.select().where(users.c.email == email)
+    user = await database.fetch_one(query=query)
+    if user is not None:
+        return dict(user)
+    else:
+        return None
+
+
+async def update_social_account(pk: int, item_dict: dict) -> bool or dict:
+    """ Getting social account using email """
+
+    user = await get_user_from_email(email=item_dict.get('email'))
+    is_new_user = False
+    if user is None:
+        is_new_user = True
+        query = social_accounts.select().where(social_accounts.c.id == pk)
+        account = dict(await database.fetch_one(query=query))
+        password = f'{account["account_id"]}_{account["provider"]}/{account["id"]}'
+        new_dict = UserCreate(
+            password=password,
+            repeat_password=password,
+            email=item_dict['email'],
+            username=account['username']
+        )
+        user = await user_create(
+            item=new_dict,
+            additional_text=f'Your password is: {password}. '
+                            f'That is if you want to login with password (username: {account["username"]})'
+        )
+    item_dict.update({'user': user['id']})
+    query = social_accounts.update().where(social_accounts.c.id == pk).values(**item_dict)
+    await database.execute(query=query)
+    if not is_new_user:
+        return {'user_id': user['id']}
+    return is_new_user
+
+
+async def create_social_auth_account(item: SocialAccountCreate) -> dict:
     """ Creating social auth account with out relation with user"""
 
     item_dict = item.dict()
-    query = social_auth_accounts.insert().values(**item_dict)
+    query = social_accounts.insert().values(**item_dict)
     pk = await database.execute(query=query)
     item_dict.update({'id': pk})
     return item_dict
 
 
-async def check_exist_social_auth_account(username: str, account_id: int):
+async def check_exist_social_auth_account(username: str, account_id: int) -> dict or bool:
     """ Check if social auth account exist in db"""
 
-    query = social_auth_accounts.select().where(social_auth_accounts.c.username == username).where(
-        social_auth_accounts.c.account_id == account_id)
+    query = social_accounts.select().where(social_accounts.c.username == username).where(
+        social_accounts.c.account_id == account_id)
     account = await database.fetch_one(query=query)
     if account:
-        raise HTTPException(status_code=404, detail='user already exist')
+        return dict(account)
+    return False
 
 
 async def create_super_user(item: dict) -> bool:
@@ -54,7 +96,31 @@ async def create_super_user(item: dict) -> bool:
     return True
 
 
-async def user_create(item: UserCreate) -> dict:
+async def send_email(title: str, link: str, email: str, additional_text: str):
+    """ Sending email to user """
+
+    # TODO protocol = 'https://' if is_secure else 'http://'
+    #     web_url = protocol + host
+    #     return web_url + url
+    server = smtplib.SMTP(host=EMAIL_HOST, port=EMAIL_PORT)
+    server.starttls()
+    server.login(user=EMAIL_USERNAME, password=EMAIL_HOST_PASSWORD)
+    message = MIMEMultipart('alternative')
+    text = "Hi!"
+    html = f"""\
+        <h1 style="color:red;">{title}</h1><h3>{link}</h3><h3>{additional_text}</h3>
+        """
+    print(html)
+    part1 = MIMEText(text, 'plain')
+    part2 = MIMEText(html, 'html')
+    message['Subject'] = 'Verification user'
+    message.attach(part1)
+    message.attach(part2)
+    server.sendmail(from_addr=EMAIL_USERNAME, to_addrs=email, msg=message.as_string())
+    server.quit()
+
+
+async def user_create(item: UserCreate, additional_text: Optional[str] = '') -> dict:
     """ Creating user """
 
     item_dict = await _validate_password(item=item.dict())
@@ -64,23 +130,13 @@ async def user_create(item: UserCreate) -> dict:
         item_dict.update({'id': pk})
     except Exception as e:
         raise HTTPException(status_code=404, detail=e.detail)
-
-    server = smtplib.SMTP(host=EMAIL_HOST, port=EMAIL_PORT)
-    server.starttls()
-    server.login(user=EMAIL_USERNAME, password=EMAIL_HOST_PASSWORD)
-    message = MIMEMultipart('alternative')
-    text = "Hi!"
-    html = f"""\
-    <h1 style="color:red;">This is your verification link:<h1>
-    <h3>http://127.0.0.1:8000/verification/{pk}/<h3>
-    """
-    part1 = MIMEText(text, 'plain')
-    part2 = MIMEText(html, 'html')
-    message['Subject'] = 'Verification user'
-    message.attach(part1)
-    message.attach(part2)
-    server.sendmail(from_addr=EMAIL_USERNAME, to_addrs=item_dict.get('email'), msg=message.as_string())
-    server.quit()
+    await send_email(
+        title='This is your verification link:',
+        # TODO link using uid
+        link='verification/',
+        email=item_dict.get('email'),
+        additional_text=additional_text
+    )
     return item_dict
 
 

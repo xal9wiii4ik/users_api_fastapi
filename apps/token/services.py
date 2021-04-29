@@ -21,12 +21,12 @@ async def authenticate_user(password: str, username: str = None, email: str = No
 
     user = await _get_user(username=username, email=email)
     if user is None:
-        return None
+        raise HTTPException(status_code=404, detail='User does not exist')
     else:
         if verify_password(plain_password=password, hashed_password=user['hashed_password']):
             return user
         else:
-            return None
+            raise HTTPException(status_code=404, detail='invalid password')
 
 
 async def authenticate(request: Request) -> dict or None:

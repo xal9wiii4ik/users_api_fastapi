@@ -5,7 +5,7 @@ from apps.token.schemas import Token, LoginForm
 from apps.token.services import authenticate_user, create_access_token
 
 from .config import social_auth, redirect_uri
-from ..user.schemas import SocialAuthCreate, SocialAuthShow
+from ..user.schemas import SocialAccountCreate, SocialAccountShow
 from ..user.services import create_social_auth_account, check_exist_social_auth_account
 
 auth_router = APIRouter()
@@ -16,11 +16,8 @@ async def get_access_token(item: LoginForm):
     """ Create access token """
 
     user = await authenticate_user(**item.dict())
-    if user is None:
-        raise HTTPException(status_code=404, detail='User does not exist')
-    else:
-        data = create_access_token(data={'user_id': user['id']})
-        return data
+    data = create_access_token(data={'user_id': user['id']})
+    return data
 
 
 @auth_router.get('/')
@@ -29,19 +26,22 @@ async def login_oauth(request: Request):
     return await github.authorize_redirect(request, redirect_uri)
 
 
-@auth_router.get('/github_login', response_model=SocialAuthShow)
+@auth_router.get('/github_login', status_code=201, response_model=None)
 async def authorize(request: Request):
     token = await social_auth.github.authorize_access_token(request)
     response = await social_auth.github.get('user', token=token)
     profile = response.json()
-    serializer_profile = SocialAuthCreate(
+    serializer_profile = SocialAccountCreate(
         account_id=profile['id'],
         username=profile['login'],
         provider='github'
     )
-    await check_exist_social_auth_account(username=profile['login'], account_id=profile['id'])
-    profile = await create_social_auth_account(item=serializer_profile)
-    return profile
-
-# TODO move create social user to new func
-# TODO create func for verificate email and add user to social auth
+    account = await check_exist_social_auth_account(username=profile['login'], account_id=profile['id'])
+    if account.get('email') is not None:
+        return create_access_token(data={'user_id': account['user']})
+    if not account:
+        account = await create_social_auth_account(item=serializer_profile)
+        return {
+            'email': 'enter the email to continue or if you already have account enter email using in this account',
+            'id': account.get('id')
+        }
