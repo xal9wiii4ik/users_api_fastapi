@@ -8,10 +8,11 @@ from db.base_model_class import Base
 class Uid(Base):
     """Model uid for future verification of user"""
 
+    id = Column(Integer, primary_key=True)
     uid = Column(String)
-    user = Column(Integer, ForeignKey('user.id'), nullable=True)
+    user = Column(Integer, ForeignKey('user.id'), nullable=True, unique=True)
     user_id = relationship(User)
-    social_user = Column(Integer, ForeignKey('user.id'), nullable=True)
+    social_user = Column(Integer, ForeignKey('user.id'), nullable=True, unique=True)
     social_user_id = relationship(SocialAccount)
 
 
