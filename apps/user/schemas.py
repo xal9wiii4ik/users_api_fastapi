@@ -35,7 +35,7 @@ class UserCreate(UserBaseInDb):
     repeat_password: str
 
 
-class SocialAuthCreate(BaseModel):
+class SocialAccountCreate(BaseModel):
     """ Schema for creating social account"""
 
     account_id: int
@@ -44,7 +44,13 @@ class SocialAuthCreate(BaseModel):
     provider: str
 
 
-class SocialAuthShow(SocialAuthCreate):
+class SocialAccountShow(SocialAccountCreate):
     """ Schema for display social account"""
 
     id: int
+
+
+class SocialAccountEmail(BaseModel):
+    """ Schema for updating social account (email) """
+
+    email: str
