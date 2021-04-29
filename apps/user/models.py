@@ -1,5 +1,4 @@
-from sqlalchemy import Column, Integer, String, Boolean, ForeignKey
-from sqlalchemy.orm import relationship
+from sqlalchemy import Column, Integer, String, Boolean
 
 from db.base_model_class import Base
 
@@ -16,18 +15,3 @@ class User(Base):
 
 
 users = User.__table__
-
-
-class SocialAccount(Base):
-    """ Model for social account """
-
-    id = Column(Integer, primary_key=True)
-    account_id = Column(Integer)
-    username = Column(String)
-    email = Column(String, nullable=True)
-    provider = Column(String)
-    user = Column(Integer, ForeignKey('user.id'), nullable=True)
-    user_id = relationship(User)
-
-
-social_accounts = SocialAccount.__table__

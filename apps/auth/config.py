@@ -5,7 +5,7 @@ from core.config import CLIENT_SECRET, CLIENT_ID
 
 social_auth = OAuth()
 
-redirect_uri = 'http://127.0.0.1:8000/github_login'
+redirect_uri = 'http://127.0.0.1:8000/auth/github_login'
 
 social_auth.register(
     name='github',

@@ -1,7 +1,8 @@
-from sqlalchemy import Column, Integer, String, Boolean, ForeignKey
+from sqlalchemy import Column, Integer, String, ForeignKey
 from sqlalchemy.orm import relationship
 
-from apps.user.models import User, SocialAccount
+from apps.social_account.models import SocialAccount
+from apps.user.models import User
 from db.base_model_class import Base
 
 
