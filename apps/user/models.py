@@ -18,8 +18,8 @@ class User(Base):
 users = User.__table__
 
 
-class SocialAuth(Base):
-    """ Model for social auth """
+class SocialAccount(Base):
+    """ Model for social account """
 
     id = Column(Integer, primary_key=True)
     account_id = Column(Integer)
@@ -30,4 +30,4 @@ class SocialAuth(Base):
     user_id = relationship(User)
 
 
-social_auth_accounts = SocialAuth.__table__
+social_accounts = SocialAccount.__table__
