@@ -1,4 +1,5 @@
 import smtplib
+import uuid
 
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
@@ -6,6 +7,7 @@ from typing import Optional
 
 from fastapi import HTTPException
 
+from apps.token.models import uid
 from core.security import get_hashed_password
 from db.db import database
 from apps.user.models import users, social_accounts
@@ -30,7 +32,7 @@ async def get_user_from_email(email: str) -> dict or None:
         return None
 
 
-async def update_social_account(pk: int, item_dict: dict) -> bool or dict:
+async def update_social_account(request_dict: dict, pk: int, item_dict: dict) -> bool or dict:
     """ Getting social account using email """
 
     user = await get_user_from_email(email=item_dict.get('email'))
@@ -47,6 +49,7 @@ async def update_social_account(pk: int, item_dict: dict) -> bool or dict:
             username=account['username']
         )
         user = await user_create(
+            request_dict=request_dict,
             item=new_dict,
             additional_text=f'Your password is: {password}. '
                             f'That is if you want to login with password (username: {account["username"]})'
@@ -56,7 +59,7 @@ async def update_social_account(pk: int, item_dict: dict) -> bool or dict:
     await database.execute(query=query)
     if not is_new_user:
         return {'user_id': user['id']}
-    return is_new_user
+    return False
 
 
 async def create_social_auth_account(item: SocialAccountCreate) -> dict:
@@ -110,7 +113,6 @@ async def send_email(title: str, link: str, email: str, additional_text: str):
     html = f"""\
         <h1 style="color:red;">{title}</h1><h3>{link}</h3><h3>{additional_text}</h3>
         """
-    print(html)
     part1 = MIMEText(text, 'plain')
     part2 = MIMEText(html, 'html')
     message['Subject'] = 'Verification user'
@@ -120,31 +122,65 @@ async def send_email(title: str, link: str, email: str, additional_text: str):
     server.quit()
 
 
-async def user_create(item: UserCreate, additional_text: Optional[str] = '') -> dict:
+async def _get_web_url(request_dict: dict) -> str:
+    """ Build url for emails """
+
+    return f'{request_dict["scheme"]}://{request_dict["server"][0]}:{request_dict["server"][1]}'
+
+
+async def _create_uuid(user_id: Optional[int] = None, social_user_id: Optional[int] = None) -> dict:
+    """ Creating uuid and write in db """
+
+    items = {
+        'uid': uuid.uuid4().hex
+    }
+    if user_id is not None:
+        items.update({'user': user_id})
+    if social_user_id is not None:
+        items.update(({'social_user': social_user_id}))
+    query = uid.insert().values(**items)
+    try:
+        pk = await database.execute(query=query)
+        items.update({'pk': pk})
+        return items
+    except Exception as e:
+        raise HTTPException(status_code=404, detail=e.detail)
+
+
+async def user_create(request_dict: dict, item: UserCreate, additional_text: Optional[str] = '') -> dict:
     """ Creating user """
 
+    url = await _get_web_url(request_dict=request_dict)
     item_dict = await _validate_password(item=item.dict())
+    item_dict.update({'is_active': False, 'is_superuser': False})
     query = users.insert().values(**item_dict)
     try:
         pk = await database.execute(query=query)
         item_dict.update({'id': pk})
     except Exception as e:
         raise HTTPException(status_code=404, detail=e.detail)
+    uid_items = await _create_uuid(user_id=pk)
     await send_email(
         title='This is your verification link:',
-        # TODO link using uid
-        link='verification/',
+        link=f'{url}/verification/{uid_items["uid"]}/{uid_items["pk"]}',
         email=item_dict.get('email'),
         additional_text=additional_text
     )
     return item_dict
 
 
-async def user_verification(pk: int) -> None:
+async def user_verification(u: str, pk: int) -> None:
     """ Set is_active to true """
 
-    query = users.update().where(users.c.id == pk).values(**{'is_active': True})
-    return await database.execute(query=query)
+    query = uid.select().where(uid.c.id == pk)
+    true_uuid = await database.fetch_one(query=query)
+    if true_uuid is not None:
+        true_uuid = dict(true_uuid)
+        if true_uuid['uid'] == u:
+            query = users.update().where(users.c.id == true_uuid['user']).values(**{'is_active': True})
+            await database.execute(query=query)
+            query = uid.delete().where(uid.c.id == pk)
+            await database.execute(query=query)
 
 
 async def user_update(pk: int, item: UserInDb) -> dict:
