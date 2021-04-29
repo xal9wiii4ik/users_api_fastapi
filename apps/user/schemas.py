@@ -8,8 +8,6 @@ class UserBase(BaseModel):
 
     email: str
     username: str
-    is_active: Optional[bool] = False
-    is_superuser: Optional[bool] = False
 
 
 class UserBaseInDb(UserBase):
