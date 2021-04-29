@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Request
 
 from apps.token.services import create_access_token
 from apps.user.permissions import get_current_active_user
@@ -15,10 +15,10 @@ router = APIRouter()
 
 
 @router.post(path='/user', response_model=UserInDb, status_code=201)
-async def create_user(item: UserCreate):
+async def create_user(request: Request, item: UserCreate):
     """ Create user """
 
-    return await user_create(item=item)
+    return await user_create(request_dict=dict(request), item=item)
 
 
 @router.get(path='/user/{pk}', response_model=UserInDb, status_code=200)
@@ -48,17 +48,17 @@ async def delete_user(pk: int, user: dict = Depends(get_current_active_user)):
         return {}
 
 
-@router.get(path='/verification/{pk}', response_model=None, status_code=200)
-async def verification_user(pk: int):
+@router.get(path='/verification/{u}/{pk}', response_model=None, status_code=200)
+async def verification_user(u: str, pk: int):
     """ Verification user """
 
-    await user_verification(pk=pk)
+    await user_verification(u=u, pk=pk)
     return {'detail': 'User has been activate'}
 
 
 @router.post('/github_verification/{pk}', response_model=None)
-async def git_hub_verification_account(pk: int, item: SocialAccountEmail):
-    response = await update_social_account(pk=pk, item_dict=item.dict())
+async def git_hub_verification_account(request: Request, pk: int, item: SocialAccountEmail):
+    response = await update_social_account(request_dict=dict(request), pk=pk, item_dict=item.dict())
     if response:
         return create_access_token(data=response)
     else:

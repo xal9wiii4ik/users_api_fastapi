@@ -37,7 +37,7 @@ async def authorize(request: Request):
         provider='github'
     )
     account = await check_exist_social_auth_account(username=profile['login'], account_id=profile['id'])
-    if account.get('email') is not None:
+    if account:
         return create_access_token(data={'user_id': account['user']})
     if not account:
         account = await create_social_auth_account(item=serializer_profile)
